@@ -9,6 +9,7 @@ import './App.css';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [filters, setFilters] = useState<TaskFilters>({
     status: '',
     priority: '',
@@ -19,6 +20,7 @@ function App() {
     try {
       const data = await fetchTasks(filters);
       setTasks(data.tasks);
+      setRefreshKey((k) => k + 1);
     } catch (error) {
       console.error('Failed to load tasks:', error);
     }
@@ -36,7 +38,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        <Dashboard tasks={tasks} />
+        <Dashboard refreshKey={refreshKey} />
 
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />

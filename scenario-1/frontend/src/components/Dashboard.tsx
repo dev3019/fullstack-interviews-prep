@@ -1,36 +1,46 @@
-import { Task } from '../types';
+import { useState, useEffect } from 'react';
+import { TaskStats } from '../types';
+import { fetchStats } from '../api';
 
 interface DashboardProps {
-  tasks: Task[];
+  refreshKey: number;
 }
 
-export function Dashboard({ tasks }: DashboardProps) {
-  const total = tasks.length;
-  const completed = tasks.filter((t) => t.status === 'completed').length;
-  const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
-  const pending = tasks.filter((t) => t.status === 'pending').length;
-  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+export function Dashboard({ refreshKey }: DashboardProps) {
+  const [stats, setStats] = useState<TaskStats>({
+    total: 0,
+    completed: 0,
+    in_progress: 0,
+    pending: 0,
+    completion_rate: 0,
+  });
+
+  useEffect(() => {
+    fetchStats()
+      .then(setStats)
+      .catch((err) => console.error('Failed to load stats:', err));
+  }, [refreshKey]);
 
   return (
     <section className="dashboard">
       <div className="stat-card">
-        <span className="stat-value">{total}</span>
+        <span className="stat-value">{stats.total}</span>
         <span className="stat-label">Total Tasks</span>
       </div>
       <div className="stat-card completed">
-        <span className="stat-value">{completed}</span>
+        <span className="stat-value">{stats.completed}</span>
         <span className="stat-label">Completed</span>
       </div>
       <div className="stat-card in-progress">
-        <span className="stat-value">{inProgress}</span>
+        <span className="stat-value">{stats.in_progress}</span>
         <span className="stat-label">In Progress</span>
       </div>
       <div className="stat-card pending">
-        <span className="stat-value">{pending}</span>
+        <span className="stat-value">{stats.pending}</span>
         <span className="stat-label">Pending</span>
       </div>
       <div className="stat-card rate">
-        <span className="stat-value">{completionRate}%</span>
+        <span className="stat-value">{stats.completion_rate}%</span>
         <span className="stat-label">Completion Rate</span>
       </div>
     </section>

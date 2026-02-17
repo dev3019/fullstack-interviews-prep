@@ -20,3 +20,11 @@ export interface TaskListResponse {
   page: number;
   limit: number;
 }
+
+export interface TaskStats {
+  total: number;
+  completed: number;
+  in_progress: number;
+  pending: number;
+  completion_rate: number;
+}

@@ -1,4 +1,3 @@
-from operator import and_
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -71,9 +70,34 @@ class TaskListResponse(BaseModel):
     limit: int
 
 
+class TaskStatsResponse(BaseModel):
+    total: int
+    completed: int
+    in_progress: int
+    pending: int
+    completion_rate: int
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+
+@app.get("/api/tasks/stats", response_model=TaskStatsResponse)
+def get_task_stats(db: Session = Depends(get_db)):
+    total = db.query(Task).count()
+    completed = db.query(Task).filter(Task.status == "completed").count()
+    in_progress = db.query(Task).filter(Task.status == "in_progress").count()
+    pending = db.query(Task).filter(Task.status == "pending").count()
+    completion_rate = round((completed / total) * 100) if total > 0 else 0
+
+    return TaskStatsResponse(
+        total=total,
+        completed=completed,
+        in_progress=in_progress,
+        pending=pending,
+        completion_rate=completion_rate,
+    )
 
 
 @app.get("/api/tasks", response_model=TaskListResponse)
@@ -101,7 +125,7 @@ def list_tasks(
         )
 
     if filters:
-        query = query.filter(or_(*filters))
+        query = query.filter(and_(*filters))
 
     query = query.order_by(Task.created_at.desc())
 
@@ -148,6 +172,8 @@ def update_task(task_id: int, update: TaskUpdate, db: Session = Depends(get_db))
         task.status = update.status
         if update.status == "completed":
             task.completed_at = datetime.utcnow()
+        else:
+            task.completed_at = None
     if update.priority is not None:
         task.priority = update.priority
 
