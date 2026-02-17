@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchTasks } from './api';
-import { Task, TaskFilters } from './types';
+import { fetchTasks, fetchTaskStats } from './api';
+import { Task, TaskFilters, TaskStats } from './types';
 import { Dashboard } from './components/Dashboard';
 import { FilterBar } from './components/FilterBar';
 import { TaskForm } from './components/TaskForm';
@@ -9,6 +9,12 @@ import './App.css';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [stats, setStats] = useState<TaskStats>({
+    total: 0,
+    completed: 0,
+    in_progress: 0,
+    pending: 0,
+  });
   const [filters, setFilters] = useState<TaskFilters>({
     status: '',
     priority: '',
@@ -17,8 +23,12 @@ function App() {
 
   const loadTasks = useCallback(async () => {
     try {
-      const data = await fetchTasks(filters);
-      setTasks(data.tasks);
+      const [taskData, statsData] = await Promise.all([
+        fetchTasks(filters),
+        fetchTaskStats(),
+      ]);
+      setTasks(taskData.tasks);
+      setStats(statsData);
     } catch (error) {
       console.error('Failed to load tasks:', error);
     }
@@ -36,7 +46,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        <Dashboard tasks={tasks} />
+        <Dashboard stats={stats} />
 
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />

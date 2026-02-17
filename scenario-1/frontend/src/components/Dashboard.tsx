@@ -1,14 +1,14 @@
-import { Task } from '../types';
+import { TaskStats } from '../types';
 
 interface DashboardProps {
-  tasks: Task[];
+  stats: TaskStats;
 }
 
-export function Dashboard({ tasks }: DashboardProps) {
-  const total = tasks.length;
-  const completed = tasks.filter((t) => t.status === 'completed').length;
-  const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
-  const pending = tasks.filter((t) => t.status === 'pending').length;
+export function Dashboard({ stats }: DashboardProps) {
+  const total = stats.total;
+  const completed = stats.completed;
+  const inProgress = stats.in_progress;
+  const pending = stats.pending;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
