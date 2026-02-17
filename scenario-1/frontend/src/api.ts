@@ -1,6 +1,12 @@
-import { TaskFilters, TaskListResponse, Task } from './types';
+import { TaskFilters, TaskListResponse, TaskStats, Task } from './types';
 
 const API_BASE = 'http://localhost:8000';
+
+export async function fetchStats(): Promise<TaskStats> {
+  const response = await fetch(`${API_BASE}/api/tasks/stats`);
+  if (!response.ok) throw new Error('Failed to fetch stats');
+  return response.json();
+}
 
 export async function fetchTasks(filters: TaskFilters): Promise<TaskListResponse> {
   const params = new URLSearchParams();
