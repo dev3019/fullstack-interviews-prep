@@ -1,0 +1,479 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  background-color: #f0f4f3;
+  color: #2d3748;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------ */
+/* App layout                                                         */
+/* ------------------------------------------------------------------ */
+
+.app {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 24px 0;
+  border-bottom: 2px solid #c6f6d5;
+}
+
+.app-header h1 {
+  font-size: 2rem;
+  color: #22543d;
+  margin-bottom: 4px;
+}
+
+.app-header p {
+  color: #718096;
+  font-size: 0.95rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Spending summary                                                   */
+/* ------------------------------------------------------------------ */
+
+.spending-summary {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.total-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.total-value {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #22543d;
+}
+
+.summary-count {
+  text-align: right;
+}
+
+.count-value {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.count-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.category-breakdown h3 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #718096;
+  margin-bottom: 12px;
+}
+
+.category-row {
+  margin-bottom: 10px;
+}
+
+.category-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.category-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: #2d3748;
+}
+
+.category-amount {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.category-bar-bg {
+  height: 8px;
+  background: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.category-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.summary-loading {
+  text-align: center;
+  padding: 32px;
+  color: #a0aec0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Controls                                                           */
+/* ------------------------------------------------------------------ */
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Filter bar                                                         */
+/* ------------------------------------------------------------------ */
+
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+  align-items: flex-end;
+}
+
+.filter-bar select,
+.filter-bar input {
+  padding: 10px 14px;
+  border: 1px solid #c6f6d5;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: white;
+  color: #2d3748;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.filter-bar select:focus,
+.filter-bar input:focus {
+  border-color: #38b2ac;
+  box-shadow: 0 0 0 3px rgba(56, 178, 172, 0.15);
+}
+
+.date-range {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.date-range label {
+  font-size: 0.8rem;
+  color: #718096;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-range input {
+  padding: 10px 14px;
+  border: 1px solid #c6f6d5;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: white;
+  color: #2d3748;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.date-range input:focus {
+  border-color: #38b2ac;
+  box-shadow: 0 0 0 3px rgba(56, 178, 172, 0.15);
+}
+
+/* ------------------------------------------------------------------ */
+/* Expense form                                                       */
+/* ------------------------------------------------------------------ */
+
+.expense-form {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.expense-form input,
+.expense-form textarea,
+.expense-form select {
+  padding: 10px 14px;
+  border: 1px solid #c6f6d5;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.expense-form input:focus,
+.expense-form textarea:focus,
+.expense-form select:focus {
+  border-color: #38b2ac;
+  box-shadow: 0 0 0 3px rgba(56, 178, 172, 0.15);
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row input,
+.form-row select {
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Buttons                                                            */
+/* ------------------------------------------------------------------ */
+
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: #38b2ac;
+  color: white;
+}
+.btn-primary:hover {
+  background: #319795;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+.btn-secondary:hover {
+  background: #cbd5e0;
+}
+
+.btn-xs {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+}
+
+.btn-approve {
+  background: #c6f6d5;
+  color: #22543d;
+}
+.btn-approve:hover {
+  background: #9ae6b4;
+}
+
+.btn-reject {
+  background: #fed7d7;
+  color: #c53030;
+}
+.btn-reject:hover {
+  background: #feb2b2;
+}
+
+.btn-delete {
+  background: #edf2f7;
+  color: #718096;
+}
+.btn-delete:hover {
+  background: #e2e8f0;
+  color: #c53030;
+}
+
+/* ------------------------------------------------------------------ */
+/* Expense table                                                      */
+/* ------------------------------------------------------------------ */
+
+.table-wrapper {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.expense-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.expense-table thead {
+  background: #f7fafc;
+}
+
+.expense-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #718096;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.expense-table th:hover {
+  color: #38b2ac;
+}
+
+.expense-table th:last-child {
+  cursor: default;
+}
+
+.expense-table td {
+  padding: 14px 16px;
+  border-top: 1px solid #edf2f7;
+  font-size: 0.9rem;
+}
+
+.expense-table tr:hover {
+  background: #f7faf9;
+}
+
+.cell-title {
+  font-weight: 500;
+  color: #1a202c;
+}
+
+.cell-desc {
+  font-size: 0.8rem;
+  color: #a0aec0;
+  margin-top: 2px;
+}
+
+.cell-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1a202c;
+}
+
+/* ------------------------------------------------------------------ */
+/* Category tags                                                      */
+/* ------------------------------------------------------------------ */
+
+.category-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.category-travel {
+  background: #bee3f8;
+  color: #2a4365;
+}
+.category-meals {
+  background: #c6f6d5;
+  color: #22543d;
+}
+.category-office {
+  background: #feebc8;
+  color: #c05621;
+}
+.category-software {
+  background: #e9d8fd;
+  color: #553c9a;
+}
+.category-other {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+/* ------------------------------------------------------------------ */
+/* Status badges                                                      */
+/* ------------------------------------------------------------------ */
+
+.status-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-approved {
+  background: #c6f6d5;
+  color: #22543d;
+}
+.status-pending {
+  background: #fefcbf;
+  color: #744210;
+}
+.status-rejected {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+/* ------------------------------------------------------------------ */
+/* Row actions                                                        */
+/* ------------------------------------------------------------------ */
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Empty state                                                        */
+/* ------------------------------------------------------------------ */
+
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: #a0aec0;
+  font-size: 1.1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
