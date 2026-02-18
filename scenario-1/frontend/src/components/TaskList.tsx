@@ -7,7 +7,7 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, onUpdate }: TaskListProps) {
-  const handleStatusChange = async (task: Task, newStatus: string) => {
+  const handleStatusChange = async (task: Task, newStatus: Task['status']) => {
     try {
       await updateTask(task.id, { status: newStatus });
       onUpdate();
@@ -48,7 +48,7 @@ export function TaskList({ tasks, onUpdate }: TaskListProps) {
     }
   };
 
-  const getNextStatus = (current: string): string => {
+  const getNextStatus = (current: Task['status']): Task['status'] => {
     switch (current) {
       case 'pending':
         return 'in_progress';

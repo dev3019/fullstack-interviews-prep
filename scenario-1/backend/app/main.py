@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func, case
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .database import engine, get_db, Base
 from .models import Task
@@ -21,6 +21,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def utc_now() -> datetime:
+    # Store timestamps as naive UTC for SQLite compatibility.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 @app.on_event("startup")
@@ -85,10 +90,15 @@ class TaskStatsResponse(BaseModel):
 
 @app.get("/api/tasks/stats", response_model=TaskStatsResponse)
 def get_task_stats(db: Session = Depends(get_db)):
-    total = db.query(Task).count()
-    completed = db.query(Task).filter(Task.status == "completed").count()
-    in_progress = db.query(Task).filter(Task.status == "in_progress").count()
-    pending = db.query(Task).filter(Task.status == "pending").count()
+    total, completed, in_progress, pending = db.query(
+        func.count(Task.id),
+        func.sum(case((Task.status == "completed", 1), else_=0)),
+        func.sum(case((Task.status == "in_progress", 1), else_=0)),
+        func.sum(case((Task.status == "pending", 1), else_=0)),
+    ).one()
+    completed = completed or 0
+    in_progress = in_progress or 0
+    pending = pending or 0
     completion_rate = round((completed / total) * 100) if total > 0 else 0
 
     return TaskStatsResponse(
@@ -142,7 +152,7 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
         description=task.description,
         priority=task.priority,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
     db.add(db_task)
     db.commit()
@@ -171,7 +181,7 @@ def update_task(task_id: int, update: TaskUpdate, db: Session = Depends(get_db))
     if update.status is not None:
         task.status = update.status
         if update.status == "completed":
-            task.completed_at = datetime.utcnow()
+            task.completed_at = utc_now()
         else:
             task.completed_at = None
     if update.priority is not None:

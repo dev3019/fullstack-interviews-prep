@@ -9,7 +9,7 @@ import './App.css';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const [filters, setFilters] = useState<TaskFilters>({
     status: '',
     priority: '',
@@ -20,11 +20,15 @@ function App() {
     try {
       const data = await fetchTasks(filters);
       setTasks(data.tasks);
-      setRefreshKey((k) => k + 1);
     } catch (error) {
       console.error('Failed to load tasks:', error);
     }
   }, [filters]);
+
+  const handleTaskMutation = useCallback(() => {
+    loadTasks();
+    setStatsRefreshKey((k) => k + 1);
+  }, [loadTasks]);
 
   useEffect(() => {
     loadTasks();
@@ -38,14 +42,14 @@ function App() {
       </header>
 
       <main className="app-main">
-        <Dashboard refreshKey={refreshKey} />
+        <Dashboard statsRefreshKey={statsRefreshKey} />
 
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />
-          <TaskForm onCreated={loadTasks} />
+          <TaskForm onCreated={handleTaskMutation} />
         </section>
 
-        <TaskList tasks={tasks} onUpdate={loadTasks} />
+        <TaskList tasks={tasks} onUpdate={handleTaskMutation} />
       </main>
     </div>
   );

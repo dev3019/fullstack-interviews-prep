@@ -3,10 +3,10 @@ import { TaskStats } from '../types';
 import { fetchStats } from '../api';
 
 interface DashboardProps {
-  refreshKey: number;
+  statsRefreshKey: number;
 }
 
-export function Dashboard({ refreshKey }: DashboardProps) {
+export function Dashboard({ statsRefreshKey }: DashboardProps) {
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
     completed: 0,
@@ -19,7 +19,7 @@ export function Dashboard({ refreshKey }: DashboardProps) {
     fetchStats()
       .then(setStats)
       .catch((err) => console.error('Failed to load stats:', err));
-  }, [refreshKey]);
+  }, [statsRefreshKey]);
 
   return (
     <section className="dashboard">
