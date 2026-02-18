@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { fetchTasks } from './api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { fetchTasks, updateTask, deleteTask } from './api';
 import { Task, TaskFilters } from './types';
 import { Dashboard } from './components/Dashboard';
 import { FilterBar } from './components/FilterBar';
@@ -7,28 +7,93 @@ import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
 import './App.css';
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [statsKey, setStatsKey] = useState(0);
   const [filters, setFilters] = useState<TaskFilters>({
     status: '',
     priority: '',
     search: '',
   });
 
+  const debouncedSearch = useDebouncedValue(filters.search, 400);
+
+  const debouncedFilters = useMemo(
+    () => ({ ...filters, search: debouncedSearch }),
+    [filters.status, filters.priority, debouncedSearch],
+  );
+
+  const refreshStats = useCallback(() => setStatsKey((k) => k + 1), []);
+
   const loadTasks = useCallback(async () => {
     try {
-      const data = await fetchTasks(filters);
+      const data = await fetchTasks(debouncedFilters);
       setTasks(data.tasks);
-      setRefreshKey((k) => k + 1);
     } catch (error) {
       console.error('Failed to load tasks:', error);
     }
-  }, [filters]);
+  }, [debouncedFilters]);
 
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  const handleMutation = useCallback(() => {
+    refreshStats();
+    loadTasks();
+  }, [refreshStats, loadTasks]);
+
+  const handleStatusChange = useCallback(
+    async (taskId: number, newStatus: string) => {
+      const previousTasks = tasks;
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: newStatus as Task['status'],
+                completed_at:
+                  newStatus === 'completed' ? new Date().toISOString() : null,
+              }
+            : t,
+        ),
+      );
+      refreshStats();
+
+      try {
+        await updateTask(taskId, { status: newStatus });
+      } catch {
+        setTasks(previousTasks);
+        refreshStats();
+      }
+    },
+    [tasks, refreshStats],
+  );
+
+  const handleDelete = useCallback(
+    async (taskId: number) => {
+      const previousTasks = tasks;
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      refreshStats();
+
+      try {
+        await deleteTask(taskId);
+      } catch {
+        setTasks(previousTasks);
+        refreshStats();
+      }
+    },
+    [tasks, refreshStats],
+  );
 
   return (
     <div className="app">
@@ -38,14 +103,18 @@ function App() {
       </header>
 
       <main className="app-main">
-        <Dashboard refreshKey={refreshKey} />
+        <Dashboard statsKey={statsKey} />
 
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />
-          <TaskForm onCreated={loadTasks} />
+          <TaskForm onCreated={handleMutation} />
         </section>
 
-        <TaskList tasks={tasks} onUpdate={loadTasks} />
+        <TaskList
+          tasks={tasks}
+          onStatusChange={handleStatusChange}
+          onDelete={handleDelete}
+        />
       </main>
     </div>
   );

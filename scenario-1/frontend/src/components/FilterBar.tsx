@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { TaskFilters } from '../types';
 
 interface FilterBarProps {
@@ -5,7 +6,7 @@ interface FilterBarProps {
   onChange: (filters: TaskFilters) => void;
 }
 
-export function FilterBar({ filters, onChange }: FilterBarProps) {
+function FilterBarInner({ filters, onChange }: FilterBarProps) {
   return (
     <div className="filter-bar">
       <select
@@ -37,3 +38,5 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
     </div>
   );
 }
+
+export const FilterBar = memo(FilterBarInner);

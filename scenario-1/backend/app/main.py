@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -85,10 +85,16 @@ class TaskStatsResponse(BaseModel):
 
 @app.get("/api/tasks/stats", response_model=TaskStatsResponse)
 def get_task_stats(db: Session = Depends(get_db)):
-    total = db.query(Task).count()
-    completed = db.query(Task).filter(Task.status == "completed").count()
-    in_progress = db.query(Task).filter(Task.status == "in_progress").count()
-    pending = db.query(Task).filter(Task.status == "pending").count()
+    rows = (
+        db.query(Task.status, func.count(Task.id))
+        .group_by(Task.status)
+        .all()
+    )
+    counts = {status: cnt for status, cnt in rows}
+    completed = counts.get("completed", 0)
+    in_progress = counts.get("in_progress", 0)
+    pending = counts.get("pending", 0)
+    total = completed + in_progress + pending
     completion_rate = round((completed / total) * 100) if total > 0 else 0
 
     return TaskStatsResponse(
@@ -127,10 +133,14 @@ def list_tasks(
     if filters:
         query = query.filter(and_(*filters))
 
-    query = query.order_by(Task.created_at.desc())
+    total = query.with_entities(func.count(Task.id)).scalar()
 
-    total = query.count()
-    tasks = query.offset((page - 1) * limit).limit(limit).all()
+    tasks = (
+        query.order_by(Task.created_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
 
     return TaskListResponse(tasks=tasks, total=total, page=page, limit=limit)
 

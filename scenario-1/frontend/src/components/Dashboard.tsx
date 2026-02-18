@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { TaskStats } from '../types';
 import { fetchStats } from '../api';
 
 interface DashboardProps {
-  refreshKey: number;
+  statsKey: number;
 }
 
-export function Dashboard({ refreshKey }: DashboardProps) {
+function DashboardInner({ statsKey }: DashboardProps) {
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
     completed: 0,
@@ -19,7 +19,7 @@ export function Dashboard({ refreshKey }: DashboardProps) {
     fetchStats()
       .then(setStats)
       .catch((err) => console.error('Failed to load stats:', err));
-  }, [refreshKey]);
+  }, [statsKey]);
 
   return (
     <section className="dashboard">
@@ -46,3 +46,5 @@ export function Dashboard({ refreshKey }: DashboardProps) {
     </section>
   );
 }
+
+export const Dashboard = memo(DashboardInner);

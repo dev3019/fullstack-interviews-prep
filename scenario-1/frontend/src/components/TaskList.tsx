@@ -1,29 +1,16 @@
+import { memo } from 'react';
 import { Task } from '../types';
-import { updateTask, deleteTask } from '../api';
 
 interface TaskListProps {
   tasks: Task[];
-  onUpdate: () => void;
+  onStatusChange: (taskId: number, newStatus: string) => void;
+  onDelete: (taskId: number) => void;
 }
 
-export function TaskList({ tasks, onUpdate }: TaskListProps) {
-  const handleStatusChange = async (task: Task, newStatus: string) => {
-    try {
-      await updateTask(task.id, { status: newStatus });
-      onUpdate();
-    } catch (error) {
-      console.error('Failed to update task:', error);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
+function TaskListInner({ tasks, onStatusChange, onDelete }: TaskListProps) {
+  const handleDelete = (id: number) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
-    try {
-      await deleteTask(id);
-      onUpdate();
-    } catch (error) {
-      console.error('Failed to delete task:', error);
-    }
+    onDelete(id);
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -110,7 +97,7 @@ export function TaskList({ tasks, onUpdate }: TaskListProps) {
               <button
                 className="btn btn-sm"
                 onClick={() =>
-                  handleStatusChange(task, getNextStatus(task.status))
+                  onStatusChange(task.id, getNextStatus(task.status))
                 }
                 title={`Move to ${getNextStatus(task.status).replace('_', ' ')}`}
               >
@@ -129,3 +116,5 @@ export function TaskList({ tasks, onUpdate }: TaskListProps) {
     </section>
   );
 }
+
+export const TaskList = memo(TaskListInner);

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { createTask } from '../api';
 
 interface TaskFormProps {
   onCreated: () => void;
 }
 
-export function TaskForm({ onCreated }: TaskFormProps) {
+function TaskFormInner({ onCreated }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -74,3 +74,5 @@ export function TaskForm({ onCreated }: TaskFormProps) {
     </form>
   );
 }
+
+export const TaskForm = memo(TaskFormInner);
