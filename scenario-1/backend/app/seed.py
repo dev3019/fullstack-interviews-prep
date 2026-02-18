@@ -1,6 +1,9 @@
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 
 from .models import Task
+
+logger = logging.getLogger(__name__)
 
 
 def seed_tasks(db):
@@ -8,7 +11,7 @@ def seed_tasks(db):
     if db.query(Task).count() > 0:
         return
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     tasks = [
         Task(
@@ -86,5 +89,9 @@ def seed_tasks(db):
         ),
     ]
 
-    db.add_all(tasks)
-    db.commit()
+    try:
+        db.add_all(tasks)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to seed tasks")

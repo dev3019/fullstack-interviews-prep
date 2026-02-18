@@ -1,18 +1,44 @@
+import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Literal, Optional
+
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
 from sqlalchemy import or_, and_, func
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from .database import engine, get_db, Base
+from .database import engine, get_db, SessionLocal, Base
 from .models import Task
 from .seed import seed_tasks
 
+logger = logging.getLogger(__name__)
+
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Task Tracker API")
+# ---------------------------------------------------------------------------
+# Lifespan (replaces deprecated @app.on_event)
+# ---------------------------------------------------------------------------
+
+VALID_STATUSES = Literal["pending", "in_progress", "completed"]
+VALID_PRIORITIES = Literal["low", "medium", "high"]
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db = SessionLocal()
+    try:
+        seed_tasks(db)
+    except Exception:
+        logger.exception("Startup seeding failed")
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="Task Tracker API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,31 +49,22 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def startup():
-    db = next(get_db())
-    try:
-        seed_tasks(db)
-    finally:
-        db.close()
-
-
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
 
 class TaskCreate(BaseModel):
-    title: str
-    description: str = ""
-    priority: str = "medium"
+    title: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(default="", max_length=2000)
+    priority: VALID_PRIORITIES = "medium"
 
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-    priority: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    status: Optional[VALID_STATUSES] = None
+    priority: Optional[VALID_PRIORITIES] = None
 
 
 class TaskResponse(BaseModel):
@@ -76,6 +93,16 @@ class TaskStatsResponse(BaseModel):
     in_progress: int
     pending: int
     completion_rate: int
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _escape_like(value: str) -> str:
+    """Escape special SQL LIKE wildcard characters."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 # ---------------------------------------------------------------------------
@@ -108,8 +135,8 @@ def get_task_stats(db: Session = Depends(get_db)):
 
 @app.get("/api/tasks", response_model=TaskListResponse)
 def list_tasks(
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
+    status: Optional[VALID_STATUSES] = None,
+    priority: Optional[VALID_PRIORITIES] = None,
     search: Optional[str] = None,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -123,10 +150,11 @@ def list_tasks(
     if priority:
         filters.append(Task.priority == priority)
     if search:
+        escaped = _escape_like(search)
         filters.append(
             or_(
-                Task.title.ilike(f"%{search}%"),
-                Task.description.ilike(f"%{search}%"),
+                Task.title.ilike(f"%{escaped}%", escape="\\"),
+                Task.description.ilike(f"%{escaped}%", escape="\\"),
             )
         )
 
@@ -152,11 +180,15 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
         description=task.description,
         priority=task.priority,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
+    try:
+        db.commit()
+        db.refresh(db_task)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create task")
     return db_task
 
 
@@ -181,14 +213,18 @@ def update_task(task_id: int, update: TaskUpdate, db: Session = Depends(get_db))
     if update.status is not None:
         task.status = update.status
         if update.status == "completed":
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
         else:
             task.completed_at = None
     if update.priority is not None:
         task.priority = update.priority
 
-    db.commit()
-    db.refresh(task)
+    try:
+        db.commit()
+        db.refresh(task)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update task")
     return task
 
 
@@ -198,4 +234,8 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     db.delete(task)
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete task")
