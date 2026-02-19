@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from .models import Task
 
 
@@ -87,4 +89,8 @@ def seed_tasks(db):
     ]
 
     db.add_all(tasks)
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise

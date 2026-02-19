@@ -94,3 +94,21 @@ scenario-1/
 - Users can cycle task status: pending → in progress → completed → pending
 - Users can delete tasks
 - All changes persist across page reloads
+
+## Optional Production-Grade Hardening
+
+The current implementation enforces validation at the API and frontend layers.
+For stronger guarantees in production environments, add database-level constraints
+and migration support:
+
+1. Add DB constraints for enum-like fields (`status`, `priority`) in
+   `backend/app/models.py`:
+   - Use `CheckConstraint` (portable for SQLite), or
+   - Use SQLAlchemy `Enum` if your target database supports native enums.
+2. Introduce Alembic migrations in `backend/`:
+   - Create a baseline migration for the existing schema.
+   - Add a migration that applies status/priority constraints.
+   - Version-control all schema changes for safe deployment and rollback.
+3. Evolve safely:
+   - Add a data-fix migration before constraints if legacy rows may contain invalid values.
+   - Run migrations in CI/CD before app startup.
