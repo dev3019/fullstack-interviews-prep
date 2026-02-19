@@ -2,7 +2,7 @@ import { TaskFilters, TaskListResponse, TaskStats, Task } from './types';
 
 const API_BASE = 'http://localhost:8000';
 
-async function handleResponse<T>(response: Response): Promise<T> {
+async function throwIfError(response: Response): Promise<void> {
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     try {
@@ -13,11 +13,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
             ? body.detail
             : JSON.stringify(body.detail);
       }
-    } catch {
-      // response body wasn't JSON
+    } catch (err) {
+      console.warn('Could not parse error response body:', err);
     }
     throw new Error(message);
   }
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  await throwIfError(response);
   return response.json();
 }
 
@@ -67,19 +71,5 @@ export async function deleteTask(id: number): Promise<void> {
   const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
     method: 'DELETE',
   });
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try {
-      const body = await response.json();
-      if (body.detail) {
-        message =
-          typeof body.detail === 'string'
-            ? body.detail
-            : JSON.stringify(body.detail);
-      }
-    } catch {
-      // response body wasn't JSON
-    }
-    throw new Error(message);
-  }
+  await throwIfError(response);
 }
