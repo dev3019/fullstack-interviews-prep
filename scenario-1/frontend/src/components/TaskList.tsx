@@ -3,11 +3,12 @@ import { Task } from '../types';
 
 interface TaskListProps {
   tasks: Task[];
-  onStatusChange: (taskId: number, newStatus: string) => void;
+  isLoading: boolean;
+  onStatusChange: (taskId: number, newStatus: Task['status']) => void;
   onDelete: (taskId: number) => void;
 }
 
-function TaskListInner({ tasks, onStatusChange, onDelete }: TaskListProps) {
+function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListProps) {
   const handleDelete = (id: number) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
     onDelete(id);
@@ -35,15 +36,13 @@ function TaskListInner({ tasks, onStatusChange, onDelete }: TaskListProps) {
     }
   };
 
-  const getNextStatus = (current: string): string => {
+  const getNextStatus = (current: Task['status']): Task['status'] => {
     switch (current) {
       case 'pending':
         return 'in_progress';
       case 'in_progress':
         return 'completed';
       case 'completed':
-        return 'pending';
-      default:
         return 'pending';
     }
   };
@@ -66,6 +65,15 @@ function TaskListInner({ tasks, onStatusChange, onDelete }: TaskListProps) {
       year: 'numeric',
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="loading-state">
+        <div className="spinner" />
+        <p>Loading tasks&hellip;</p>
+      </div>
+    );
+  }
 
   if (tasks.length === 0) {
     return <div className="empty-state">No tasks found</div>;

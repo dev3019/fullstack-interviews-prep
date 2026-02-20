@@ -9,8 +9,8 @@ export interface Task {
 }
 
 export interface TaskFilters {
-  status: string;
-  priority: string;
+  status: Task['status'] | '';
+  priority: Task['priority'] | '';
   search: string;
 }
 

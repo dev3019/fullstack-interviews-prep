@@ -3,18 +3,22 @@ import { createTask } from '../api';
 
 interface TaskFormProps {
   onCreated: () => void;
+  onError: (message: string) => void;
+  onSuccess: (message: string) => void;
 }
 
-function TaskFormInner({ onCreated }: TaskFormProps) {
+function TaskFormInner({ onCreated, onError, onSuccess }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [isOpen, setIsOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
+    setSubmitting(true);
     try {
       await createTask({
         title: title.trim(),
@@ -25,9 +29,12 @@ function TaskFormInner({ onCreated }: TaskFormProps) {
       setDescription('');
       setPriority('medium');
       setIsOpen(false);
+      onSuccess('Task created');
       onCreated();
     } catch (error) {
-      console.error('Failed to create task:', error);
+      onError((error as Error).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -60,8 +67,8 @@ function TaskFormInner({ onCreated }: TaskFormProps) {
         <option value="low">Low Priority</option>
       </select>
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary">
-          Create Task
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
+          {submitting ? 'Creating...' : 'Create Task'}
         </button>
         <button
           type="button"

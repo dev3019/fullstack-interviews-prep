@@ -5,6 +5,7 @@ import { Dashboard } from './components/Dashboard';
 import { FilterBar } from './components/FilterBar';
 import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
+import { useToast, ToastContainer } from './components/Toast';
 import './App.css';
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -18,12 +19,15 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
   const [filters, setFilters] = useState<TaskFilters>({
     status: '',
     priority: '',
     search: '',
   });
+
+  const { toasts, addToast, removeToast } = useToast();
 
   const debouncedSearch = useDebouncedValue(filters.search, 400);
 
@@ -35,13 +39,16 @@ function App() {
   const refreshStats = useCallback(() => setStatsKey((k) => k + 1), []);
 
   const loadTasks = useCallback(async () => {
+    setIsLoading(true);
     try {
       const data = await fetchTasks(debouncedFilters);
       setTasks(data.tasks);
     } catch (error) {
-      console.error('Failed to load tasks:', error);
+      addToast({ type: 'error', message: (error as Error).message });
+    } finally {
+      setIsLoading(false);
     }
-  }, [debouncedFilters]);
+  }, [debouncedFilters, addToast]);
 
   useEffect(() => {
     loadTasks();
@@ -53,46 +60,63 @@ function App() {
   }, [refreshStats, loadTasks]);
 
   const handleStatusChange = useCallback(
-    async (taskId: number, newStatus: string) => {
-      const previousTasks = tasks;
-      setTasks((prev) =>
-        prev.map((t) =>
+    async (taskId: number, newStatus: Task['status']) => {
+      let previousTasks: Task[] = [];
+      setTasks((prev) => {
+        previousTasks = prev;
+        return prev.map((t) =>
           t.id === taskId
             ? {
                 ...t,
-                status: newStatus as Task['status'],
+                status: newStatus,
                 completed_at:
                   newStatus === 'completed' ? new Date().toISOString() : null,
               }
             : t,
-        ),
-      );
+        );
+      });
       refreshStats();
 
       try {
         await updateTask(taskId, { status: newStatus });
-      } catch {
+      } catch (error) {
         setTasks(previousTasks);
         refreshStats();
+        addToast({ type: 'error', message: (error as Error).message });
       }
     },
-    [tasks, refreshStats],
+    [refreshStats, addToast],
   );
 
   const handleDelete = useCallback(
     async (taskId: number) => {
-      const previousTasks = tasks;
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      let previousTasks: Task[] = [];
+      setTasks((prev) => {
+        previousTasks = prev;
+        return prev.filter((t) => t.id !== taskId);
+      });
       refreshStats();
 
       try {
         await deleteTask(taskId);
-      } catch {
+        addToast({ type: 'success', message: 'Task deleted' });
+      } catch (error) {
         setTasks(previousTasks);
         refreshStats();
+        addToast({ type: 'error', message: (error as Error).message });
       }
     },
-    [tasks, refreshStats],
+    [refreshStats, addToast],
+  );
+
+  const handleError = useCallback(
+    (message: string) => addToast({ type: 'error', message }),
+    [addToast],
+  );
+
+  const handleSuccess = useCallback(
+    (message: string) => addToast({ type: 'success', message }),
+    [addToast],
   );
 
   return (
@@ -107,15 +131,22 @@ function App() {
 
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />
-          <TaskForm onCreated={handleMutation} />
+          <TaskForm
+            onCreated={handleMutation}
+            onError={handleError}
+            onSuccess={handleSuccess}
+          />
         </section>
 
         <TaskList
           tasks={tasks}
+          isLoading={isLoading}
           onStatusChange={handleStatusChange}
           onDelete={handleDelete}
         />
       </main>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
