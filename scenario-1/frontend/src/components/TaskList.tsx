@@ -6,9 +6,10 @@ interface TaskListProps {
   isLoading: boolean;
   onStatusChange: (taskId: number, newStatus: Task['status']) => void;
   onDelete: (taskId: number) => void;
+  onEdit: (task: Task) => void;
 }
 
-function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListProps) {
+function TaskListInner({ tasks, isLoading, onStatusChange, onDelete, onEdit }: TaskListProps) {
   const handleDelete = (id: number) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
     onDelete(id);
@@ -110,6 +111,12 @@ function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListP
                 title={`Move to ${getNextStatus(task.status).replace('_', ' ')}`}
               >
                 {getActionLabel(task.status)}
+              </button>
+              <button
+                className="btn btn-sm"
+                onClick={() => onEdit(task)}
+              >
+                Edit
               </button>
               <button
                 className="btn btn-sm btn-danger"

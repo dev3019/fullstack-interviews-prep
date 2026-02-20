@@ -1,18 +1,45 @@
-import { memo, useState } from 'react';
-import { createTask } from '../api';
+import { memo, useState, useEffect } from 'react';
+import { createTask, updateTask } from '../api';
+import { Task } from '../types';
 
 interface TaskFormProps {
+  editingTask: Task | null;
   onCreated: () => void;
+  onUpdated: () => void;
+  onCancelEdit: () => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
 }
 
-function TaskFormInner({ onCreated, onError, onSuccess }: TaskFormProps) {
+function TaskFormInner({
+  editingTask,
+  onCreated,
+  onUpdated,
+  onCancelEdit,
+  onError,
+  onSuccess,
+}: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [isOpen, setIsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (editingTask) {
+      setTitle(editingTask.title);
+      setDescription(editingTask.description);
+      setPriority(editingTask.priority);
+      setIsOpen(true);
+    }
+  }, [editingTask]);
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPriority('medium');
+    setIsOpen(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,22 +47,34 @@ function TaskFormInner({ onCreated, onError, onSuccess }: TaskFormProps) {
 
     setSubmitting(true);
     try {
-      await createTask({
-        title: title.trim(),
-        description: description.trim(),
-        priority,
-      });
-      setTitle('');
-      setDescription('');
-      setPriority('medium');
-      setIsOpen(false);
-      onSuccess('Task created');
-      onCreated();
+      if (editingTask) {
+        await updateTask(editingTask.id, {
+          title: title.trim(),
+          description: description.trim(),
+          priority: priority as Task['priority'],
+        });
+        onSuccess('Task updated');
+        onUpdated();
+      } else {
+        await createTask({
+          title: title.trim(),
+          description: description.trim(),
+          priority,
+        });
+        onSuccess('Task created');
+        onCreated();
+      }
+      resetForm();
     } catch (error) {
       onError((error as Error).message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    if (editingTask) onCancelEdit();
   };
 
   if (!isOpen) {
@@ -47,7 +86,10 @@ function TaskFormInner({ onCreated, onError, onSuccess }: TaskFormProps) {
   }
 
   return (
-    <form className="task-form" onSubmit={handleSubmit}>
+    <form
+      className={`task-form${editingTask ? ' editing' : ''}`}
+      onSubmit={handleSubmit}
+    >
       <input
         type="text"
         placeholder="Task title"
@@ -68,12 +110,18 @@ function TaskFormInner({ onCreated, onError, onSuccess }: TaskFormProps) {
       </select>
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Creating...' : 'Create Task'}
+          {submitting
+            ? editingTask
+              ? 'Saving...'
+              : 'Creating...'
+            : editingTask
+              ? 'Save Changes'
+              : 'Create Task'}
         </button>
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => setIsOpen(false)}
+          onClick={handleCancel}
         >
           Cancel
         </button>

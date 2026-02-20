@@ -75,10 +75,10 @@ function App() {
             : t,
         );
       });
-      refreshStats();
 
       try {
         await updateTask(taskId, { status: newStatus });
+        refreshStats();
       } catch (error) {
         setTasks(previousTasks);
         refreshStats();
@@ -95,10 +95,10 @@ function App() {
         previousTasks = prev;
         return prev.filter((t) => t.id !== taskId);
       });
-      refreshStats();
 
       try {
         await deleteTask(taskId);
+        refreshStats();
         addToast({ type: 'success', message: 'Task deleted' });
       } catch (error) {
         setTasks(previousTasks);
@@ -108,6 +108,21 @@ function App() {
     },
     [refreshStats, addToast],
   );
+
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const handleEdit = useCallback((task: Task) => {
+    setEditingTask(task);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingTask(null);
+  }, []);
+
+  const handleUpdated = useCallback(() => {
+    setEditingTask(null);
+    handleMutation();
+  }, [handleMutation]);
 
   const handleError = useCallback(
     (message: string) => addToast({ type: 'error', message }),
@@ -132,7 +147,10 @@ function App() {
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />
           <TaskForm
+            editingTask={editingTask}
             onCreated={handleMutation}
+            onUpdated={handleUpdated}
+            onCancelEdit={handleCancelEdit}
             onError={handleError}
             onSuccess={handleSuccess}
           />
@@ -143,6 +161,7 @@ function App() {
           isLoading={isLoading}
           onStatusChange={handleStatusChange}
           onDelete={handleDelete}
+          onEdit={handleEdit}
         />
       </main>
 
