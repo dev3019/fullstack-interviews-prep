@@ -4,11 +4,20 @@ import { Task } from '../types';
 interface TaskListProps {
   tasks: Task[];
   isLoading: boolean;
+  hasActiveFilters: boolean;
   onStatusChange: (taskId: number, newStatus: Task['status']) => void;
+  onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
 }
 
-function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListProps) {
+function TaskListInner({
+  tasks,
+  isLoading,
+  hasActiveFilters,
+  onStatusChange,
+  onEdit,
+  onDelete,
+}: TaskListProps) {
   const handleDelete = (id: number) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
     onDelete(id);
@@ -66,6 +75,9 @@ function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListP
     });
   };
 
+  const formatStatusLabel = (status: Task['status']) =>
+    status.replace(/_/g, ' ');
+
   if (isLoading) {
     return (
       <div className="loading-state">
@@ -76,7 +88,13 @@ function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListP
   }
 
   if (tasks.length === 0) {
-    return <div className="empty-state">No tasks found</div>;
+    return (
+      <div className="empty-state">
+        {hasActiveFilters
+          ? 'No tasks match the current filters'
+          : 'No tasks found'}
+      </div>
+    );
   }
 
   return (
@@ -87,7 +105,7 @@ function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListP
             <h3 className="task-title">{task.title}</h3>
             <div className="task-badges">
               <span className={getStatusBadgeClass(task.status)}>
-                {task.status.replace('_', ' ')}
+                {formatStatusLabel(task.status)}
               </span>
               <span className={getPriorityBadgeClass(task.priority)}>
                 {task.priority}
@@ -107,9 +125,15 @@ function TaskListInner({ tasks, isLoading, onStatusChange, onDelete }: TaskListP
                 onClick={() =>
                   onStatusChange(task.id, getNextStatus(task.status))
                 }
-                title={`Move to ${getNextStatus(task.status).replace('_', ' ')}`}
+                title={`Move to ${formatStatusLabel(getNextStatus(task.status))}`}
               >
                 {getActionLabel(task.status)}
+              </button>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => onEdit(task)}
+              >
+                Edit
               </button>
               <button
                 className="btn btn-sm btn-danger"

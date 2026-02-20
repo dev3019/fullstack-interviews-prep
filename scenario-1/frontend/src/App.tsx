@@ -21,6 +21,7 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filters, setFilters] = useState<TaskFilters>({
     status: '',
     priority: '',
@@ -54,9 +55,9 @@ function App() {
     loadTasks();
   }, [loadTasks]);
 
-  const handleMutation = useCallback(() => {
+  const handleMutation = useCallback(async () => {
     refreshStats();
-    loadTasks();
+    await loadTasks();
   }, [refreshStats, loadTasks]);
 
   const handleStatusChange = useCallback(
@@ -79,13 +80,14 @@ function App() {
 
       try {
         await updateTask(taskId, { status: newStatus });
+        await handleMutation();
       } catch (error) {
         setTasks(previousTasks);
         refreshStats();
         addToast({ type: 'error', message: (error as Error).message });
       }
     },
-    [refreshStats, addToast],
+    [refreshStats, addToast, handleMutation],
   );
 
   const handleDelete = useCallback(
@@ -99,6 +101,10 @@ function App() {
 
       try {
         await deleteTask(taskId);
+        await handleMutation();
+        if (editingTask?.id === taskId) {
+          setEditingTask(null);
+        }
         addToast({ type: 'success', message: 'Task deleted' });
       } catch (error) {
         setTasks(previousTasks);
@@ -106,7 +112,53 @@ function App() {
         addToast({ type: 'error', message: (error as Error).message });
       }
     },
-    [refreshStats, addToast],
+    [refreshStats, addToast, handleMutation, editingTask],
+  );
+
+  const handleEditStart = useCallback((task: Task) => {
+    setEditingTask(task);
+  }, []);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingTask(null);
+  }, []);
+
+  const handleEditSubmit = useCallback(
+    async (data: {
+      id: number;
+      title: string;
+      description: string;
+      priority: Task['priority'];
+    }) => {
+      let previousTasks: Task[] = [];
+      setTasks((prev) => {
+        previousTasks = prev;
+        return prev.map((task) =>
+          task.id === data.id
+            ? {
+                ...task,
+                title: data.title,
+                description: data.description,
+                priority: data.priority,
+              }
+            : task,
+        );
+      });
+
+      try {
+        await updateTask(data.id, {
+          title: data.title,
+          description: data.description,
+          priority: data.priority,
+        });
+        setEditingTask(null);
+        await handleMutation();
+      } catch (error) {
+        setTasks(previousTasks);
+        throw error;
+      }
+    },
+    [handleMutation],
   );
 
   const handleError = useCallback(
@@ -117,6 +169,10 @@ function App() {
   const handleSuccess = useCallback(
     (message: string) => addToast({ type: 'success', message }),
     [addToast],
+  );
+
+  const hasActiveFilters = Boolean(
+    filters.status || filters.priority || filters.search.trim(),
   );
 
   return (
@@ -132,7 +188,11 @@ function App() {
         <section className="controls">
           <FilterBar filters={filters} onChange={setFilters} />
           <TaskForm
+            mode={editingTask ? 'edit' : 'create'}
+            initialTask={editingTask}
             onCreated={handleMutation}
+            onEdited={handleEditSubmit}
+            onCancelEdit={handleEditCancel}
             onError={handleError}
             onSuccess={handleSuccess}
           />
@@ -141,7 +201,9 @@ function App() {
         <TaskList
           tasks={tasks}
           isLoading={isLoading}
+          hasActiveFilters={hasActiveFilters}
           onStatusChange={handleStatusChange}
+          onEdit={handleEditStart}
           onDelete={handleDelete}
         />
       </main>

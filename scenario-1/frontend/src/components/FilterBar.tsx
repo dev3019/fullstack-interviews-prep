@@ -11,7 +11,12 @@ function FilterBarInner({ filters, onChange }: FilterBarProps) {
     <div className="filter-bar">
       <select
         value={filters.status}
-        onChange={(e) => onChange({ ...filters, status: e.target.value })}
+        onChange={(e) =>
+          onChange({
+            ...filters,
+            status: e.target.value as TaskFilters['status'],
+          })
+        }
       >
         <option value="">All Statuses</option>
         <option value="pending">Pending</option>
@@ -21,7 +26,12 @@ function FilterBarInner({ filters, onChange }: FilterBarProps) {
 
       <select
         value={filters.priority}
-        onChange={(e) => onChange({ ...filters, priority: e.target.value })}
+        onChange={(e) =>
+          onChange({
+            ...filters,
+            priority: e.target.value as TaskFilters['priority'],
+          })
+        }
       >
         <option value="">All Priorities</option>
         <option value="high">High</option>
