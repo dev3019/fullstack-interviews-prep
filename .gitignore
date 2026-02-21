@@ -5,3 +5,4 @@ scenario-5/
 scenario-*-bugged/
 
 .DS_Store
+node_modules/
