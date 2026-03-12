@@ -5,18 +5,16 @@ from typing import Literal, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import or_, and_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .database import engine, get_db, SessionLocal, Base
-from .models import Task
-from .seed import seed_tasks
+from .database import get_db, SessionLocal
+from .models import Task, User
+from .seed import SEEDED_USER_EMAIL, seed_tasks
 
 logger = logging.getLogger(__name__)
-
-Base.metadata.create_all(bind=engine)
 
 # ---------------------------------------------------------------------------
 # Lifespan (replaces deprecated @app.on_event)
@@ -68,6 +66,8 @@ class TaskUpdate(BaseModel):
 
 
 class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     description: str
@@ -75,9 +75,6 @@ class TaskResponse(BaseModel):
     priority: str
     created_at: datetime
     completed_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class TaskListResponse(BaseModel):
@@ -105,6 +102,13 @@ def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _get_default_user(db: Session) -> User:
+    user = db.query(User).filter(User.email == SEEDED_USER_EMAIL).first()
+    if user is None:
+        raise HTTPException(status_code=500, detail="Seed user not found")
+    return user
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -112,8 +116,10 @@ def _escape_like(value: str) -> str:
 
 @app.get("/api/tasks/stats", response_model=TaskStatsResponse)
 def get_task_stats(db: Session = Depends(get_db)):
+    default_user = _get_default_user(db)
     rows = (
         db.query(Task.status, func.count(Task.id))
+        .filter(Task.user_id == default_user.id)
         .group_by(Task.status)
         .all()
     )
@@ -142,7 +148,8 @@ def list_tasks(
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Task)
+    default_user = _get_default_user(db)
+    query = db.query(Task).filter(Task.user_id == default_user.id)
 
     filters = []
     if status:
@@ -175,12 +182,14 @@ def list_tasks(
 
 @app.post("/api/tasks", response_model=TaskResponse, status_code=201)
 def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+    default_user = _get_default_user(db)
     db_task = Task(
         title=task.title,
         description=task.description,
         priority=task.priority,
         status="pending",
         created_at=datetime.now(timezone.utc),
+        user_id=default_user.id,
     )
     db.add(db_task)
     try:
@@ -194,7 +203,12 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
 
 @app.get("/api/tasks/{task_id}", response_model=TaskResponse)
 def get_task(task_id: int, db: Session = Depends(get_db)):
-    task = db.query(Task).filter(Task.id == task_id).first()
+    default_user = _get_default_user(db)
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.user_id == default_user.id)
+        .first()
+    )
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -202,7 +216,12 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
 
 @app.patch("/api/tasks/{task_id}", response_model=TaskResponse)
 def update_task(task_id: int, update: TaskUpdate, db: Session = Depends(get_db)):
-    task = db.query(Task).filter(Task.id == task_id).first()
+    default_user = _get_default_user(db)
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.user_id == default_user.id)
+        .first()
+    )
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -230,7 +249,12 @@ def update_task(task_id: int, update: TaskUpdate, db: Session = Depends(get_db))
 
 @app.delete("/api/tasks/{task_id}", status_code=204)
 def delete_task(task_id: int, db: Session = Depends(get_db)):
-    task = db.query(Task).filter(Task.id == task_id).first()
+    default_user = _get_default_user(db)
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.user_id == default_user.id)
+        .first()
+    )
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     db.delete(task)

@@ -1,14 +1,42 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from .models import Task
+from .models import Task, User
 
 logger = logging.getLogger(__name__)
+
+SEEDED_USER_EMAIL = "legacy-owner@example.com"
+SEEDED_USER_NAME = "Legacy Owner"
+SEEDED_USER_PROVIDER = "legacy"
+SEEDED_USER_PROVIDER_ID = "legacy-owner"
+
+
+def get_or_create_seed_user(db) -> User:
+    user = db.query(User).filter(User.email == SEEDED_USER_EMAIL).first()
+    if user:
+        return user
+
+    now = datetime.now(timezone.utc)
+    user = User(
+        email=SEEDED_USER_EMAIL,
+        name=SEEDED_USER_NAME,
+        picture=None,
+        provider=SEEDED_USER_PROVIDER,
+        provider_id=SEEDED_USER_PROVIDER_ID,
+        created_at=now,
+        last_login=now,
+    )
+    db.add(user)
+    db.flush()
+    return user
 
 
 def seed_tasks(db):
     """Populate the database with sample tasks if empty."""
+    user = get_or_create_seed_user(db)
+
     if db.query(Task).count() > 0:
+        db.commit()
         return
 
     now = datetime.now(timezone.utc)
@@ -21,6 +49,7 @@ def seed_tasks(db):
             priority="high",
             created_at=now - timedelta(days=7),
             completed_at=now - timedelta(days=5),
+            user_id=user.id,
         ),
         Task(
             title="Fix login page styling",
@@ -29,6 +58,7 @@ def seed_tasks(db):
             priority="low",
             created_at=now - timedelta(days=6),
             completed_at=now - timedelta(days=4),
+            user_id=user.id,
         ),
         Task(
             title="Search indexing optimization",
@@ -37,6 +67,7 @@ def seed_tasks(db):
             priority="medium",
             created_at=now - timedelta(days=5),
             completed_at=now - timedelta(days=3),
+            user_id=user.id,
         ),
         Task(
             title="Implement user search feature",
@@ -44,6 +75,7 @@ def seed_tasks(db):
             status="in_progress",
             priority="high",
             created_at=now - timedelta(days=4),
+            user_id=user.id,
         ),
         Task(
             title="Deploy to staging environment",
@@ -51,6 +83,7 @@ def seed_tasks(db):
             status="pending",
             priority="high",
             created_at=now - timedelta(days=3),
+            user_id=user.id,
         ),
         Task(
             title="Write API documentation",
@@ -58,6 +91,7 @@ def seed_tasks(db):
             status="pending",
             priority="medium",
             created_at=now - timedelta(days=3),
+            user_id=user.id,
         ),
         Task(
             title="Fix search performance issue",
@@ -65,6 +99,7 @@ def seed_tasks(db):
             status="in_progress",
             priority="medium",
             created_at=now - timedelta(days=2),
+            user_id=user.id,
         ),
         Task(
             title="Update npm dependencies",
@@ -72,6 +107,7 @@ def seed_tasks(db):
             status="pending",
             priority="low",
             created_at=now - timedelta(days=1),
+            user_id=user.id,
         ),
         Task(
             title="Add email notifications",
@@ -79,6 +115,7 @@ def seed_tasks(db):
             status="pending",
             priority="medium",
             created_at=now - timedelta(days=1),
+            user_id=user.id,
         ),
         Task(
             title="Design new landing page",
@@ -86,6 +123,7 @@ def seed_tasks(db):
             status="in_progress",
             priority="low",
             created_at=now,
+            user_id=user.id,
         ),
     ]
 
