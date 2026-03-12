@@ -24,9 +24,14 @@ export function ExpenseTable({ expenses, onUpdate }: ExpenseTableProps) {
 
   const sorted = useMemo(() => {
     return [...expenses].sort((a, b) => {
-      const aVal = String(a[sortBy] ?? '');
-      const bVal = String(b[sortBy] ?? '');
-      const cmp = aVal.localeCompare(bVal);
+      let cmp: number;
+      if (sortBy === 'amount') {
+        cmp = a.amount - b.amount;
+      } else {
+        const aVal = String(a[sortBy] ?? '');
+        const bVal = String(b[sortBy] ?? '');
+        cmp = aVal.localeCompare(bVal);
+      }
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [expenses, sortBy, sortDir]);

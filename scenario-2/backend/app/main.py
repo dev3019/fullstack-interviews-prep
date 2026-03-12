@@ -101,7 +101,7 @@ def list_expenses(
         query = query.filter(Expense.expense_date >= start)
     if date_end:
         end = datetime.strptime(date_end, "%Y-%m-%d").date()
-        query = query.filter(Expense.expense_date < end)
+        query = query.filter(Expense.expense_date <= end)
 
     query = query.order_by(Expense.expense_date.desc())
     expenses = query.all()
@@ -111,7 +111,7 @@ def list_expenses(
 
 @app.get("/api/expenses/summary", response_model=SummaryResponse)
 def get_summary(db: Session = Depends(get_db)):
-    expenses = db.query(Expense).all()
+    expenses = db.query(Expense).filter(Expense.status != "rejected").all()
 
     total = sum(e.amount for e in expenses)
     by_category: dict[str, float] = {}
