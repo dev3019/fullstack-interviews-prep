@@ -14,6 +14,18 @@
 - **Strict Scope:** Do not implement features or logic that were not explicitly asked for.
 - **Permission-Based:** Do not start implementing/writing code until the user has explicitly given the "Go ahead" or "Implement" command. Provide plans or pseudocode first if the task is complex. Make sure whatever is being implemented follows real-worl production standards.
 
+## Code Pattern & Consistency
+- **Pattern Matching:** Before writing code, analyze the existing codebase's patterns, naming conventions, and architectural style.
+- **Standards vs. Consistency:** - If the current pattern follows industry standards, replicate it exactly.
+    - If the current pattern is outdated or suboptimal, **do not** automatically refactor it. Instead, explain why it deviates from industry standards, suggest the improvement, and **ask for permission** to implement the new way.
+
+## Implementation Protocol
+- **The "Confirmation Gate":** If you make a technical suggestion or architectural plan, you must receive an explicit "Yes" or "Implement" from the user before generating the actual code.
+- **No Omissions:** Once the user gives the "go-ahead" for a specific suggestion, you must implement the *entire* suggestion as discussed. Do not skip parts of the plan or simplify it unless requested.
+
+## Instruction Hierarchy
+- **Prompt Precedence:** Any specific rules, constraints, or instructions provided directly within a chat prompt take absolute precedence over the instructions in this `.cursorrules` document. If a prompt contradicts these rules, follow the prompt.
+
 ## Engineering Standards
 - **Style:** No sugar-coating. Be direct and concise.
 - **Simplicity:** Prioritize simplicity. Avoid over-engineering.
