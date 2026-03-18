@@ -1,13 +1,21 @@
-from fastapi import FastAPI, Depends, HTTPException
+import logging
+from enum import Enum
+
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime, date
 
 from .database import engine, get_db, Base
 from .models import Expense
 from .seed import seed_expenses
+
+logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
 
@@ -32,25 +40,119 @@ def startup():
 
 
 # ---------------------------------------------------------------------------
+# Error response models
+# ---------------------------------------------------------------------------
+
+
+class ErrorDetail(BaseModel):
+    field: str | None = None
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    details: list[ErrorDetail] = []
+
+
+# ---------------------------------------------------------------------------
+# Global exception handlers
+# ---------------------------------------------------------------------------
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    details = []
+    for error in exc.errors():
+        field = ".".join(str(loc) for loc in error["loc"] if loc != "body")
+        details.append({"field": field, "message": error["msg"]})
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": "VALIDATION_ERROR",
+            "message": "Validation failed",
+            "details": details,
+        },
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    code_map = {404: "NOT_FOUND", 403: "FORBIDDEN", 401: "UNAUTHORIZED"}
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": code_map.get(exc.status_code, "HTTP_ERROR"),
+            "message": exc.detail,
+        },
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def db_exception_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(f"Database error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred. Please try again later.",
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred. Please try again later.",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
 
+class CategoryEnum(str, Enum):
+    travel = "travel"
+    meals = "meals"
+    office = "office"
+    software = "software"
+    other = "other"
+
+
+class StatusEnum(str, Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class ExpenseCreate(BaseModel):
-    title: str
-    description: str = ""
-    amount: float
-    category: str
+    title: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(default="", max_length=1000)
+    amount: float = Field(..., gt=0, le=1_000_000)
+    category: CategoryEnum
     expense_date: date
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title cannot be blank")
+        return v.strip()
 
 
 class ExpenseUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    amount: Optional[float] = None
-    category: Optional[str] = None
-    status: Optional[str] = None
-    expense_date: Optional[date] = None
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+    amount: float | None = Field(default=None, gt=0, le=1_000_000)
+    category: CategoryEnum | None = None
+    status: StatusEnum | None = None
+    expense_date: date | None = None
 
 
 class ExpenseResponse(BaseModel):
@@ -58,8 +160,8 @@ class ExpenseResponse(BaseModel):
     title: str
     description: str
     amount: float
-    category: str
-    status: str
+    category: CategoryEnum
+    status: StatusEnum
     expense_date: date
     created_at: datetime
 
